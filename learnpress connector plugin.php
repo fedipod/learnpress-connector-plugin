@@ -12,41 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
     die;
 }
 
-// 检查 LearnPress 版本
-function check_learnpress_version() {
-    if (defined('LEARNPRESS_VERSION')) {
-        $required_version = '4.2.6.7';
-        if (version_compare(LEARNPRESS_VERSION, $required_version, '<')) {
-            add_action('admin_notices', 'learnpress_version_error_notice');
-            deactivate_plugins(plugin_basename(__FILE__));
-            if (isset($_GET['activate'])) {
-                unset($_GET['activate']);
-            }
-        }
-    } else {
-        add_action('admin_notices', 'learnpress_missing_notice');
-        deactivate_plugins(plugin_basename(__FILE__));
-        if (isset($_GET['activate'])) {
-            unset($_GET['activate']);
-        }
-    }
-}
-add_action('admin_init', 'check_learnpress_version');
-
-// 显示 LearnPress 版本错误通知
-function learnpress_version_error_notice() {
-    echo '<div class="notice notice-error"><p>LearnPress Connector Plugin requires LearnPress version 4.2.6.7 or higher. Please update LearnPress to use this plugin.</p></div>';
-}
-
-// 显示 LearnPress 缺失通知
-function learnpress_missing_notice() {
-    echo '<div class="notice notice-error"><p>LearnPress Connector Plugin requires LearnPress to be installed and activated.</p></div>';
-}
-
 // 获取 LearnPress 数据并插入到帖子中
 function learnpress_to_post() {
-    // 假设这是一个可以获取所有课程数据的函数
-    $courses = learn_press_get_courses(array('post_status' => 'publish'));
+    // 获取所有课程数据
+    $courses = learn_press_get_courses(array('post_status' => 'publish')); // 假设这是一个可以获取所有课程数据的函数
 
     foreach ($courses as $course) {
         // 检查是否已经有对应的帖子
