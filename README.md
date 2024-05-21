@@ -1,7 +1,7 @@
-# upod plugin #
+# learnpress connector plugin #
 
 **Contributors:** NI YUNHAO
-Plugin URI: https://github.com/fedipod/upod-plugin
+Plugin URI: https://github.com/fedipod/learnpress-connector-plugin
 Author URI: http://api.edu2web.com/tinywebdb-api/ 
 Document URI: http://api.edu2web.com/tinywebdb-api/  
 **Donate link:** https://21te495.daiichi-koudai.com
