@@ -9,7 +9,6 @@
  * Require_LP_Version: 4.0.0
  */
 
-
 // Create admin menu
 function learnpress_import_menu() {
     add_menu_page(
@@ -44,17 +43,72 @@ function learnpress_import_page() {
     <?php
 }
 
+// Function to format time in a readable format
+function format_time($seconds) {
+    $years = floor($seconds / (365 * 24 * 3600));
+    $seconds %= 365 * 24 * 3600;
+    $days = floor($seconds / (24 * 3600));
+    $seconds %= 24 * 3600;
+    $hours = floor($seconds / 3600);
+    $seconds %= 3600;
+    $minutes = floor($seconds / 60);
+    $seconds %= 60;
+
+    $time_string = '';
+    if ($years > 0) {
+        $time_string .= $years . ' years ';
+    }
+    if ($days > 0) {
+        $time_string .= $days . ' days ';
+    }
+    if ($hours > 0) {
+        $time_string .= $hours . ' hours ';
+    }
+    if ($minutes > 0) {
+        $time_string .= $minutes . ' minutes ';
+    }
+    if ($seconds > 0) {
+        $time_string .= $seconds . ' seconds';
+    }
+
+    return trim($time_string);
+}
+
+// Function to get item type name
+function get_item_type_name($item_type) {
+    switch ($item_type) {
+        case 'lp_lesson':
+            return 'Lesson';
+        case 'lp_quiz':
+            return 'Quiz';
+        default:
+            return '';
+    }
+}
+
 // Import data function
 function learnpress_import_data() {
     global $wpdb;
 
-    // Query user course data
-    $results = $wpdb->get_results("
+    // Get current user ID
+    $current_user_id = get_current_user_id();
+
+    // Check if user is logged in
+    if ($current_user_id == 0) {
+        echo '<div class="notice notice-warning is-dismissible"><p>User not logged in.</p></div>';
+        return;
+    }
+
+    // Get the table prefix
+    $table_prefix = $wpdb->prefix;
+
+    // Query user course data for the current user
+    $results = $wpdb->get_results($wpdb->prepare("
         SELECT ui.user_id, ui.item_id as course_id, ui.status, ui.graduation, uir.result
-        FROM {$wpdb->prefix}learnpress_user_items ui
-        LEFT JOIN {$wpdb->prefix}learnpress_user_item_results uir ON ui.user_item_id = uir.user_item_id
-        WHERE ui.item_type = 'lp_course'
-    ");
+        FROM {$table_prefix}learnpress_user_items ui
+        LEFT JOIN {$table_prefix}learnpress_user_item_results uir ON ui.user_item_id = uir.user_item_id
+        WHERE ui.item_type = 'lp_course' AND ui.user_id = %d
+    ", $current_user_id));
 
     // Check if any data is returned
     if (empty($results)) {
@@ -63,13 +117,6 @@ function learnpress_import_data() {
     }
 
     foreach ($results as $row) {
-        // Get user information
-        $user_info = get_userdata($row->user_id);
-        if (!$user_info) {
-            continue;
-        }
-        $user_name = $user_info->user_login;
-
         // Get course information
         $course = get_post($row->course_id);
         if (!$course) {
@@ -81,18 +128,114 @@ function learnpress_import_data() {
         $result = maybe_unserialize($row->result);
         $score = isset($result['result']) ? $result['result'] : 'N/A';
 
-        // Create new WordPress post content
-        $post_content = "User {$user_name} completed the course: {$course_title}.\n";
-        $post_content .= "Status: {$row->status}\n";
-        $post_content .= "Graduation: {$row->graduation}\n";
-        $post_content .= "Score: {$score}";
+        // Create new WordPress post content in HTML format
+        $post_content = "<!-- wp:paragraph {\"className\":\"only-friends\"} -->";
+        $post_content .= "<p class=\"only-friends\">Course: {$course_title}<br>Status: {$row->status}, Graduation: {$row->graduation}, Score: {$score}<br>";
+
+        // Query section and item data
+        $sections = $wpdb->get_results($wpdb->prepare("
+            SELECT sec.section_id, sec.section_name, si.item_id, si.item_type, ui.start_time, ui.end_time, ui.graduation
+            FROM {$table_prefix}learnpress_sections sec
+            LEFT JOIN {$table_prefix}learnpress_section_items si ON sec.section_id = si.section_id
+            LEFT JOIN {$table_prefix}learnpress_user_items ui ON si.item_id = ui.item_id AND ui.user_id = %d
+            WHERE sec.section_course_id = %d
+        ", $current_user_id, $row->course_id));
+
+        if (!empty($sections)) {
+            $completed_sections = "";
+            $in_progress_sections = "";
+            $uncompleted_sections = "";
+
+            $completed_section_names = [];
+            $in_progress_section_names = [];
+            $uncompleted_section_names = [];
+
+            foreach ($sections as $section) {
+                $section_type = get_item_type_name($section->item_type);
+                $start_time = $section->start_time ? $section->start_time : 'N/A';
+                $end_time = $section->end_time ? $section->end_time : 'N/A';
+                if ($start_time !== 'N/A' && $end_time !== 'N/A') {
+                    $time_taken_seconds = strtotime($section->end_time) - strtotime($section->start_time);
+                    $time_taken = format_time($time_taken_seconds);
+                } else {
+                    $time_taken = 'N/A';
+                }
+
+                // Get item name
+                $item_name = get_the_title($section->item_id);
+
+                $section_content = "";
+
+                if ($start_time !== 'N/A' && $end_time !== 'N/A') {
+                    if (!isset($completed_section_names[$section->section_id])) {
+                        $section_content .= "{$section->section_name}<br>";
+                        $completed_section_names[$section->section_id] = true;
+                    }
+                    $section_content .= "{$item_name}";
+                    if ($section_type) {
+                        $section_content .= ", Type: {$section_type}";
+                    } else {
+                        $section_content .= ", N/A";
+                    }
+                    $section_content .= ", Start Time: {$start_time}, End Time: {$end_time}, Time Taken: {$time_taken}";
+
+                    // Display graduation status
+                    if ($section->graduation == 'passed') {
+                        $section_content .= ", Correct<br>";
+                    } else {
+                        $section_content .= ", Incorrect<br>";
+                    }
+
+                    $completed_sections .= $section_content;
+                } elseif ($start_time !== 'N/A' && $end_time === 'N/A') {
+                    if (!isset($in_progress_section_names[$section->section_id])) {
+                        $section_content .= "{$section->section_name}<br>";
+                        $in_progress_section_names[$section->section_id] = true;
+                    }
+                    $section_content .= "{$item_name}";
+                    if ($section_type) {
+                        $section_content .= ", Type: {$section_type}";
+                    } else {
+                        $section_content .= ", N/A";
+                    }
+                    $section_content .= ", Start Time: {$start_time}<br>";
+                    $in_progress_sections .= $section_content;
+                } else {
+                    if (!isset($uncompleted_section_names[$section->section_id])) {
+                        $section_content .= "{$section->section_name}<br>";
+                        $uncompleted_section_names[$section->section_id] = true;
+                    }
+                    $section_content .= "{$item_name}";
+                    if ($section_type) {
+                        $section_content .= ", Type: {$section_type}";
+                    } else {
+                        $section_content .= "N/A";
+                    }
+                    $section_content .= "<br>";
+                    $uncompleted_sections .= $section_content;
+                }
+            }
+
+            if (!empty($completed_sections)) {
+                $post_content .= "Completed Sections:<br>{$completed_sections}";
+            }
+
+            if (!empty($in_progress_sections)) {
+                $post_content .= "In Progress Sections:<br>{$in_progress_sections}";
+            }
+
+            if (!empty($uncompleted_sections)) {
+                $post_content .= "Uncompleted Sections:<br>{$uncompleted_sections}";
+            }
+        }
+        $post_content .= "</p><!-- /wp:paragraph -->";
 
         // Create new WordPress post
         $new_post = array(
-            'post_title'    => 'LearnPress Learning Data',
+            'post_title'    => $course_title,
             'post_content'  => $post_content,
             'post_status'   => 'publish',
-            'post_author'   => $row->user_id,
+            'post_author'   => $current_user_id,
             'post_category' => array(1)  // Default category
         );
 
