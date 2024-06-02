@@ -14,7 +14,7 @@ function learnpress_import_menu() {
     add_menu_page(
         'LearnPress Import', // Page title
         'LearnPress Import', // Menu title
-        'manage_options',    // Capability
+        'read',              // Capability (allow all logged-in users)
         'learnpress-import', // Menu slug
         'learnpress_import_page' // Callback function
     );
@@ -36,6 +36,7 @@ function learnpress_import_page() {
             if (!check_admin_referer('learnpress_import_action', 'learnpress_import_nonce')) {
                 wp_die('Security check failed.');
             }
+            // Remove the role check
             learnpress_import_data();
         }
         ?>
@@ -130,7 +131,7 @@ function learnpress_import_data() {
 
         // Create new WordPress post content in HTML format
         $post_content = "<!-- wp:paragraph {\"className\":\"only-friends\"} -->";
-        $post_content .= "<p class=\"only-friends\">Course: {$course_title}<br>Status: {$row->status}, Graduation: {$row->graduation}, Score: {$score}<br>";
+        $post_content .= "<p class=\"only-friends\">Status: {$row->status}, Graduation: {$row->graduation}, Score: {$score}<br>";
 
         // Query section and item data
         $sections = $wpdb->get_results($wpdb->prepare("
