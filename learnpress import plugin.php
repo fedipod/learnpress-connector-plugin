@@ -3,7 +3,8 @@
  * Plugin Name: LearnPress import Plugin
  * Description: Getting LearnPress Learning Data Into WordPress Post.
  * Author: NI YUNHAO
- * Version: 1.0.0
+ * Version: 4.1.2
+ * Require_LP_Version: 4.0.0
  */
 
 // Create admin menu
