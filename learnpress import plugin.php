@@ -1,12 +1,9 @@
 <?php
 /*
- * Plugin Name: LearnPress Connector Plugin
- * Plugin URI: https://github.com/fedipod/learnpress-connector-plugin
+ * Plugin Name: LearnPress import Plugin
  * Description: Getting LearnPress Learning Data Into WordPress Post.
  * Author: NI YUNHAO
- * Author URI: https://21te495.daiichi-koudai.com
- * Version: 4.1.2
- * Require_LP_Version: 4.0.0
+ * Version: 1.0.0
  */
 
 // Create admin menu
