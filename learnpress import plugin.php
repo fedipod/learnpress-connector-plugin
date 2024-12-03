@@ -1,6 +1,6 @@
 <?php
 /*
- * Plugin Name: LearnPress import Plugin
+ * Plugin Name: LearnPress Import Plugin
  * Description: Getting LearnPress Learning Data Into WordPress Post.
  * Author: NI YUNHAO
  * Version: 4.1.2
